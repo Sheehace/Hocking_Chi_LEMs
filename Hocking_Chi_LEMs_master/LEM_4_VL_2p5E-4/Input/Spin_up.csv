@@ -1,0 +1,2 @@
+﻿number_of_rows,number_of_columns,dxy,msp,nsp,ksp_1,ksp_2,contact_x,khs,u,dt,tmax,export_interval
+200,200,100,0.5,1,0.001,0.00025,15000,0.01,0.001,100,3.00E+05,1.00E+05
