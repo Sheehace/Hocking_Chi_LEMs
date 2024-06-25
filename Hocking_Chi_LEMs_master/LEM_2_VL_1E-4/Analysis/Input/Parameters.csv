@@ -1,2 +1,2 @@
-﻿model_year,preprocess_method,minarea,relief_radius,divide_type,smoothing_factor,calculate_theta,theta,file_type,file_dpi
-7000,fill,2.00E+05,500,topo,20,FALSE,0.5,png,600
+﻿plot_interval,preprocess_method,minarea,relief_radius,divide_type,smoothing_factor,calculate_theta,theta,file_type,file_dpi
+1000,fill,2.00E+05,500,topo,20,FALSE,0.5,png,150

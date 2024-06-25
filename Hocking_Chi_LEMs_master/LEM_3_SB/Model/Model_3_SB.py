@@ -40,16 +40,12 @@ if path.exists(str(model_directory)+'/Output/Spin_up/topographic__elevation__png
     os.mkdir(str(model_directory)+'/Output/Spin_up/topographic__elevation__png')
 if path.exists(str(model_directory)+'/Output/Spin_up/topographic__elevation__pdf') == False:
     os.mkdir(str(model_directory)+'/Output/Spin_up/topographic__elevation__pdf')
-if path.exists(str(model_directory)+'/Output/Spin_up/topographic__elevation__asc') == False:
-    os.mkdir(str(model_directory)+'/Output/Spin_up/topographic__elevation__asc')
 if path.exists(str(model_directory)+'/Output/Spin_up/topographic__elevation__tif') == False:
     os.mkdir(str(model_directory)+'/Output/Spin_up/topographic__elevation__tif')
 if path.exists(str(model_directory)+'/Output/Spin_up/dzdt__png') == False:
     os.mkdir(str(model_directory)+'/Output/Spin_up/dzdt__png')
 if path.exists(str(model_directory)+'/Output/Spin_up/dzdt__pdf') == False:
     os.mkdir(str(model_directory)+'/Output/Spin_up/dzdt__pdf')
-if path.exists(str(model_directory)+'/Output/Spin_up/dzdt__asc') == False:
-    os.mkdir(str(model_directory)+'/Output/Spin_up/dzdt__asc')
 if path.exists(str(model_directory)+'/Output/Spin_up/dzdt__tif') == False:
     os.mkdir(str(model_directory)+'/Output/Spin_up/dzdt__tif')
 if path.exists(str(model_directory)+'/Output/Spin_up/channel_map__png') == False:
@@ -60,16 +56,12 @@ if path.exists(str(model_directory)+'/Output/Main_run/topographic__elevation__pn
     os.mkdir(str(model_directory)+'/Output/Main_run/topographic__elevation__png')
 if path.exists(str(model_directory)+'/Output/Main_run/topographic__elevation__pdf') == False:
     os.mkdir(str(model_directory)+'/Output/Main_run/topographic__elevation__pdf')
-if path.exists(str(model_directory)+'/Output/Main_run/topographic__elevation__asc') == False:
-    os.mkdir(str(model_directory)+'/Output/Main_run/topographic__elevation__asc')
 if path.exists(str(model_directory)+'/Output/Main_run/topographic__elevation__tif') == False:
     os.mkdir(str(model_directory)+'/Output/Main_run/topographic__elevation__tif')
 if path.exists(str(model_directory)+'/Output/Main_run/dzdt__png') == False:
     os.mkdir(str(model_directory)+'/Output/Main_run/dzdt__png')
 if path.exists(str(model_directory)+'/Output/Main_run/dzdt__pdf') == False:
     os.mkdir(str(model_directory)+'/Output/Main_run/dzdt__pdf')
-if path.exists(str(model_directory)+'/Output/Main_run/dzdt__asc') == False:
-    os.mkdir(str(model_directory)+'/Output/Main_run/dzdt__asc')
 if path.exists(str(model_directory)+'/Output/Main_run/dzdt__tif') == False:
     os.mkdir(str(model_directory)+'/Output/Main_run/dzdt__tif')
 if path.exists(str(model_directory)+'/Output/Main_run/channel_map__png') == False:
@@ -207,9 +199,10 @@ for ti in t:
         plt.tight_layout()
         fig.savefig(str(model_directory) + '/Output/Spin_up/topographic__elevation__png/' + str(total_time) + '.png',  format='png', dpi=300)
         fig.savefig(str(model_directory) + '/Output/Spin_up/topographic__elevation__pdf/' + str(total_time) + '.pdf',  format='pdf', dpi=300)
-        write_esri_ascii(str(model_directory) + '/Output/Spin_up/topographic__elevation__asc/' + str(total_time) + '.asc', mg, names='topographic__elevation', clobber=True)
-        ds = gdal.Open(str(model_directory) + '/Output/Spin_up/topographic__elevation__asc/' + str(total_time) + '.asc')
+        write_esri_ascii(str(model_directory) + '/Output/Spin_up/topographic__elevation__tif/' + str(total_time) + '.asc', mg, names='topographic__elevation', clobber=True)
+        ds = gdal.Open(str(model_directory) + '/Output/Spin_up/topographic__elevation__tif/' + str(total_time) + '.asc')
         ds = gdal.Warp(str(model_directory) + '/Output/Spin_up/topographic__elevation__tif/' + str(total_time) + '.tif', ds, format="GTiff", dstSRS="EPSG:32616")
+        os.remove(str(model_directory) + '/Output/Spin_up/topographic__elevation__tif/' + str(total_time) + '.asc')
         plt.close(fig)
         
         # Plot dzdt
@@ -220,9 +213,10 @@ for ti in t:
         plt.tight_layout()
         fig.savefig(str(model_directory) + '/Output/Spin_up/dzdt__png/' + str(total_time) + '.png',  format='png', dpi=300)
         fig.savefig(str(model_directory) + '/Output/Spin_up/dzdt__pdf/' + str(total_time) + '.pdf',  format='pdf', dpi=300)
-        write_esri_ascii(str(model_directory) + '/Output/Spin_up/dzdt__asc/' + str(total_time) + '.asc', mg, names='dzdt', clobber=True)
-        ds = gdal.Open(str(model_directory) + '/Output/Spin_up/dzdt__asc/' + str(total_time) + '.asc')
+        write_esri_ascii(str(model_directory) + '/Output/Spin_up/dzdt__tif/' + str(total_time) + '.asc', mg, names='dzdt', clobber=True)
+        ds = gdal.Open(str(model_directory) + '/Output/Spin_up/dzdt__tif/' + str(total_time) + '.asc')
         ds = gdal.Warp(str(model_directory) + '/Output/Spin_up/dzdt__tif/' + str(total_time) + '.tif', ds, format="GTiff", dstSRS="EPSG:32616")
+        os.remove(str(model_directory) + '/Output/Spin_up/dzdt__tif/' + str(total_time) + '.asc')
         plt.close(fig)
 
         # Plot channel map
@@ -344,9 +338,10 @@ for ti in t:
         plt.tight_layout()
         fig.savefig(str(model_directory) + '/Output/Main_run/topographic__elevation__png/' + str(total_time) + '.png',  format='png', dpi=300)
         fig.savefig(str(model_directory) + '/Output/Main_run/topographic__elevation__pdf/' + str(total_time) + '.pdf',  format='pdf', dpi=300)
-        write_esri_ascii(str(model_directory) + '/Output/Main_run/topographic__elevation__asc/' + str(total_time) + '.asc', mg, names='topographic__elevation', clobber=True)
-        ds = gdal.Open(str(model_directory) + '/Output/Main_run/topographic__elevation__asc/' + str(total_time) + '.asc')
+        write_esri_ascii(str(model_directory) + '/Output/Main_run/topographic__elevation__tif/' + str(total_time) + '.asc', mg, names='topographic__elevation', clobber=True)
+        ds = gdal.Open(str(model_directory) + '/Output/Main_run/topographic__elevation__tif/' + str(total_time) + '.asc')
         ds = gdal.Warp(str(model_directory) + '/Output/Main_run/topographic__elevation__tif/' + str(total_time) + '.tif', ds, format="GTiff", dstSRS="EPSG:32616")
+        os.remove(str(model_directory) + '/Output/Main_run/topographic__elevation__tif/' + str(total_time) + '.asc')
         plt.close(fig)
         
         # Plot dzdt
@@ -357,9 +352,10 @@ for ti in t:
         plt.tight_layout()
         fig.savefig(str(model_directory) + '/Output/Main_run/dzdt__png/' + str(total_time) + '.png',  format='png', dpi=300)
         fig.savefig(str(model_directory) + '/Output/Main_run/dzdt__pdf/' + str(total_time) + '.pdf',  format='pdf', dpi=300)
-        write_esri_ascii(str(model_directory) + '/Output/Main_run/dzdt__asc/' + str(total_time) + '.asc', mg, names='dzdt', clobber=True)
-        ds = gdal.Open(str(model_directory) + '/Output/Main_run/dzdt__asc/' + str(total_time) + '.asc')
+        write_esri_ascii(str(model_directory) + '/Output/Main_run/dzdt__tif/' + str(total_time) + '.asc', mg, names='dzdt', clobber=True)
+        ds = gdal.Open(str(model_directory) + '/Output/Main_run/dzdt__tif/' + str(total_time) + '.asc')
         ds = gdal.Warp(str(model_directory) + '/Output/Main_run/dzdt__tif/' + str(total_time) + '.tif', ds, format="GTiff", dstSRS="EPSG:32616")
+        os.remove(str(model_directory) + '/Output/Main_run/dzdt__tif/' + str(total_time) + '.asc')
         plt.close(fig)
 
         # Plot channel map

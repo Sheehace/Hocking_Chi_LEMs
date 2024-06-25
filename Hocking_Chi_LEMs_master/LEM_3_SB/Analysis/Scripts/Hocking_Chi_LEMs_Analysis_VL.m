@@ -154,7 +154,7 @@ Streams = STREAMobj(Flow_Direction, 'minarea', Params.minarea, 'unit', 'map');
 lastwarn('');
 Divides = DIVIDEobj(Flow_Direction, Streams, 'type', Params.divide_type, 'verbose', false);
 [warnMsg, warnId] = lastwarn;
-if contains(warnMsg, 'divide segments') == 0
+if contains(warnMsg, 'divide segments') == 0 & ismember(t, [13 14 47]) == 0
     Divides_Lines = divorder(Divides);
 end
 

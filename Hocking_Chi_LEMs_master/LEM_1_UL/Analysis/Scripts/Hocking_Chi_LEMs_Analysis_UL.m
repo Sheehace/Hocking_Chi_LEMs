@@ -1,4 +1,4 @@
-%% Companion script to analyze Hicking_Chi_LEMs.
+%% Companion script to analyze Hocking_Chi_LEMs.
 %  Author: Chris Sheehan
 
 % Reset script
@@ -41,12 +41,28 @@ end
 List = erase(List, '.tif');
 List = str2double(List);
 List = sort(List);
+ints = List / Params.plot_interval;
+ints = rem(ints, 1) == 0;
+Print_List = List(ints);
 List_nums = List;
 List = string(List);
+Print_List = string(Print_List);
 List = append(List, '.tif');
+Print_List = append(Print_List, '.tif');
+
+% Inport model parameters
+spin_params = readtable([model_directory '\Input\Spin_up.csv']);
+main_params = readtable([model_directory '\Input\Main_run.csv']);
+
+% Import model uplift rate
+u = readtable([model_directory '\Input\Spin_up.csv']);
+u = u.u;
+
+% Create colormap
+cm = flipud(ttscm('roma'));  % load roma color map and reverse it
 
 % Toggle off figure visibility
-set(0, 'DefaultFigureVisible', 'off')
+set(0, 'DefaultFigureVisible', 'off');
 
 % Print space
 disp(' ');
@@ -62,14 +78,16 @@ disp(['DEM = ' List{t}]);
 
 % Create directories
 mkdir([analysis_directory '\Output\' erase(List{t}, '.tif') '/Images']);
-mkdir([analysis_directory '\Output\' erase(List{t}, '.tif') '/Grids']);
-mkdir([analysis_directory '\Output\' erase(List{t}, '.tif') '/Shapefiles']);
+if contains(List{t}, Print_List) == 1
+    mkdir([analysis_directory '\Output\' erase(List{t}, '.tif') '/Grids']);
+    mkdir([analysis_directory '\Output\' erase(List{t}, '.tif') '/Shapefiles']);
+end
 out_directory = [analysis_directory '\Output\' erase(List{t}, '.tif')];
 
 % Print space
 disp(' ');
 
-%% Inport and condition DEM
+%% Import and condition DEM
 
 % Print status
 disp('Importing and conditioning DEM...');
@@ -89,11 +107,9 @@ DEM_original.Z(1, :) = max(max(DEM_original.Z));        % Northern boundary
 DEM_original.Z(:, 1) = max(max(DEM_original.Z));        % Western boundary
 DEM_original.Z(end, :) = max(max(DEM_original.Z));      % Southern boundary
 
-% Find breach location and enforce its elevation as 0 (scheme assumes that 
-% breach is located on the southern boundary)
-[r, c] = find(DEM_original.Z == min(DEM_original.Z(:)));
-breach_r = r + 1;
-breach_c = c;
+% Find breach location and enforce its elevation as 0
+breach_r = size(DEM_original.Z, 1);
+breach_c = main_params.breach_x;
 DEM_original.Z(breach_r, breach_c) = 0;
 
 % Preprocess DEM
@@ -135,31 +151,40 @@ disp('Creating streams and divides...');
 Streams = STREAMobj(Flow_Direction, 'minarea', Params.minarea, 'unit', 'map');
 
 % Divides
+lastwarn('');
 Divides = DIVIDEobj(Flow_Direction, Streams, 'type', Params.divide_type, 'verbose', false);
-Divides_Lines = divorder(Divides);
+[warnMsg, warnId] = lastwarn;
+if contains(warnMsg, 'divide segments') == 0
+    Divides_Lines = divorder(Divides);
+end
 
 % Print space
 disp(' ');
 
-%% Calculate Grid Morphometrics
+%% Calculate grid morphometrics (during specified plot interval)
 
-% Print status
-disp('Calculating morphometrics...')
+% Execute at specified interval
+if contains(List{t}, Print_List) == 1
 
-% Morphometrics
-Slope_Radians = gradient8(DEM);
-Slope_Degrees = gradient8(DEM,'degree');  
-Relief = localtopography(DEM, Params.relief_radius);
-Aspect = aspect(DEM);
-hmean = localtopography(DEM, Params.relief_radius, 'type', 'mean');
-hmin =  localtopography(DEM, Params.relief_radius, 'type', 'min');
-hmax =  localtopography(DEM, Params.relief_radius, 'type', 'max');
-Hypsometric_Index = (hmean - hmin) / (hmax - hmin);
+    % Print status
+    disp('Calculating morphometrics...')
+    
+    % Morphometrics
+    Slope_Radians = gradient8(DEM);
+    Slope_Degrees = gradient8(DEM,'degree');  
+    Relief = localtopography(DEM, Params.relief_radius);
+    Aspect = aspect(DEM);
+    hmean = localtopography(DEM, Params.relief_radius, 'type', 'mean');
+    hmin =  localtopography(DEM, Params.relief_radius, 'type', 'min');
+    hmax =  localtopography(DEM, Params.relief_radius, 'type', 'max');
+    Hypsometric_Index = (hmean - hmin) / (hmax - hmin);
+    
+    % Print space
+    disp(' ');
 
-% Print space
-disp(' ');
+end
 
-%% Calculate Flow Metrics
+%% Calculate flow metrics
 
 % Print status
 disp('Calculating flow metrics')
@@ -171,95 +196,105 @@ Drainage_Area  = flowacc(Flow_Direction).*(Flow_Direction.cellsize^2);
 % Print space
 disp(' ');
 
-%% Export Morphometric Images
+%% Export morphometric images (during specified plot interval)
 
-% Print status
-disp('Exporting morphometric images...')
+% Execute at specified interval
+if contains(List{t}, Print_List) == 1
 
-% DEM_Map
-fig = figure();
-hold on;
-imageschs(DEM, [], 'colormap', cc, 'colorbarylabel', 'Elevation (m)');
-title(['Year = ' erase(List{t}, '.tif')]);
-exportgraphics(fig, [out_directory '\Images\DEM_Map.' char(Params.file_type)], 'Resolution', Params.file_dpi);
-close fig 1
+    % Print status
+    disp('Exporting morphometric images...')
+    
+    % DEM_Map
+    fig = figure();
+    hold on;
+    imageschs(DEM, [], 'colormap', cc, 'colorbarylabel', 'Elevation (m)');
+    title(['Year = ' erase(List{t}, '.tif')]);
+    exportgraphics(fig, [out_directory '\Images\DEM_Map.' char(Params.file_type)], 'Resolution', Params.file_dpi);
+    close fig 1
+    
+    % Slope (degrees)
+    fig = figure();
+    hold on;
+    imageschs(DEM, Slope_Degrees, 'colorbarylabel', 'Slope (degrees)');
+    title(['Year = ' erase(List{t}, '.tif')]);
+    exportgraphics(fig, [out_directory '\Images\Slope_Degrees_Map.' char(Params.file_type)], 'Resolution', Params.file_dpi);
+    close fig 1
+    
+    % Relief
+    fig = figure();
+    hold on;
+    imageschs(DEM, Relief, 'colorbarylabel', 'Relief (meters)');
+    title(['Year = ' erase(List{t}, '.tif')]);
+    exportgraphics(fig, [out_directory '\Images\Relief_Map.' char(Params.file_type)], 'Resolution', Params.file_dpi);
+    close fig 1
+    
+    % Drainage Area
+    fig = figure();
+    hold on;
+    imageschs(DEM, log10(Drainage_Area), 'colorbarylabel', 'log10(Drainage Area)');
+    title(['Year = ' erase(List{t}, '.tif')]);
+    exportgraphics(fig, [out_directory '\Images\Drainage_Area_Map.' char(Params.file_type)], 'Resolution', Params.file_dpi);
+    close fig 1
+    
+    % Stream Map
+    fig = figure();
+    hold on;
+    imageschs(DEM, [], 'colormap', cc, 'colorbarylabel', 'Elevation (m)');
+    plot(Streams, 'b-')
+    title(['Year = ' erase(List{t}, '.tif')]);
+    exportgraphics(fig, [out_directory '\Images\Stream_Map.' char(Params.file_type)], 'Resolution', Params.file_dpi);
+    close fig 1
+    
+    % Divides_Lines_Map
+    fig = figure();
+    hold on;
+    imageschs(DEM, [], 'colormap', cc, 'colorbarylabel', 'Elevation (m)');
+    plot(Divides_Lines, 'color','k');
+    title(['Year = ' erase(List{t}, '.tif')]);
+    exportgraphics(fig, [out_directory '\Images\Divide_Lines_Map.' char(Params.file_type)], 'Resolution', Params.file_dpi);
+    close fig 1
+    
+    % Preprocessing_Change_Map
+    fig = figure();
+    hold on;
+    imageschs(DEM, preprocessing_change, 'colormap', colormap(flipud(redblue)), 'caxis', preprocessing_scale, 'colorbarylabel', 'Elevation (m)');
+    title(['Year = ' erase(List{t}, '.tif')]);
+    exportgraphics(fig, [out_directory '\Images\Preprocessing_Change_Map.' char(Params.file_type)], 'Resolution', Params.file_dpi);
+    close fig 1
+    
+    % Hypsometric_Index_Map
+    fig = figure();
+    hold on;
+    imageschs(DEM, Hypsometric_Index, 'colorbarylabel', 'Hypsometric Index');
+    title(['Year = ' erase(List{t}, '.tif')]);
+    exportgraphics(fig, [out_directory '\Images\Hypsometric_Index_Map.' char(Params.file_type)], 'Resolution', Params.file_dpi);
+    close fig 1
+    
+    % Print space
+    disp(' ');
 
-% Slope (degrees)
-fig = figure();
-hold on;
-imageschs(DEM, Slope_Degrees, 'colorbarylabel', 'Slope (degrees)');
-title(['Year = ' erase(List{t}, '.tif')]);
-exportgraphics(fig, [out_directory '\Images\Slope_Degrees_Map.' char(Params.file_type)], 'Resolution', Params.file_dpi);
-close fig 1
+end
 
-% Relief
-fig = figure();
-hold on;
-imageschs(DEM, Relief, 'colorbarylabel', 'Relief (meters)');
-title(['Year = ' erase(List{t}, '.tif')]);
-exportgraphics(fig, [out_directory '\Images\Relief_Map.' char(Params.file_type)], 'Resolution', Params.file_dpi);
-close fig 1
+%% Export shapefiles (during specified plot interval)
 
-% Drainage Area
-fig = figure();
-hold on;
-imageschs(DEM, log10(Drainage_Area), 'colorbarylabel', 'log10(Drainage Area)');
-title(['Year = ' erase(List{t}, '.tif')]);
-exportgraphics(fig, [out_directory '\Images\Drainage_Area_Map.' char(Params.file_type)], 'Resolution', Params.file_dpi);
-close fig 1
+% Execute at specified interval
+if contains(List{t}, Print_List) == 1
 
-% Stream Map
-fig = figure();
-hold on;
-imageschs(DEM, [], 'colormap', cc, 'colorbarylabel', 'Elevation (m)');
-plot(Streams, 'b-')
-title(['Year = ' erase(List{t}, '.tif')]);
-exportgraphics(fig, [out_directory '\Images\Stream_Map.' char(Params.file_type)], 'Resolution', Params.file_dpi);
-close fig 1
+    % Print status
+    disp('Exporting stream and divide shapefiles...')
+    
+    % Streams
+    MS = STREAMobj2mapstruct(Streams);
+    shapewrite(MS, [out_directory '\Shapefiles\Streams.shp']);
+    
+    % Divides
+    MS = DIVIDEobj2mapstruct(Divides_Lines, DEM, 1000);
+    shapewrite(MS, [out_directory '\Shapefiles\Divides.shp']);
+    
+    % Print space
+    disp(' ');
 
-% Divides_Lines_Map
-fig = figure();
-hold on;
-imageschs(DEM, [], 'colormap', cc, 'colorbarylabel', 'Elevation (m)');
-plot(Divides_Lines, 'color','k');
-title(['Year = ' erase(List{t}, '.tif')]);
-exportgraphics(fig, [out_directory '\Images\Divide_Lines_Map.' char(Params.file_type)], 'Resolution', Params.file_dpi);
-close fig 1
-
-% Preprocessing_Change_Map
-fig = figure();
-hold on;
-imageschs(DEM, preprocessing_change, 'colormap', colormap(flipud(redblue)), 'caxis', preprocessing_scale, 'colorbarylabel', 'Elevation (m)');
-title(['Year = ' erase(List{t}, '.tif')]);
-exportgraphics(fig, [out_directory '\Images\Preprocessing_Change_Map.' char(Params.file_type)], 'Resolution', Params.file_dpi);
-close fig 1
-
-% Hypsometric_Index_Map
-fig = figure();
-hold on;
-imageschs(DEM, Hypsometric_Index, 'colorbarylabel', 'Hypsometric Index');
-title(['Year = ' erase(List{t}, '.tif')]);
-exportgraphics(fig, [out_directory '\Images\Hypsometric_Index_Map.' char(Params.file_type)], 'Resolution', Params.file_dpi);
-close fig 1
-
-% Print space
-disp(' ');
-
-%% Export Shapefiles
-
-% Print status
-disp('Exporting stream and divide shapefiles...')
-
-% Streams
-MS = STREAMobj2mapstruct(Streams);
-shapewrite(MS, [out_directory '\Shapefiles\Streams.shp']);
-
-% Divides
-MS = DIVIDEobj2mapstruct(Divides_Lines, DEM, 1000);
-shapewrite(MS, [out_directory '\Shapefiles\Divides.shp']);
-
-% Print space
-disp(' ');
+end
 
 %% Channel metrics
 
@@ -287,113 +322,122 @@ KsnMapped = mapfromnal(Flow_Direction, Streams, Ksn);
 
 % Chi
 if char(Params.calculate_theta) == true
-    chi = chitransform(Streams, Drainage_Area, 'mn', theta_calc);
+    chi = chitransform(Streams, Drainage_Area, 'mn', theta_calc, 'correctcellsize', false);
 else
-    chi = chitransform(Streams, Drainage_Area, 'mn', Params.theta, 'a0', Params.minarea);
+    chi = chitransform(Streams, Drainage_Area, 'mn', Params.theta, 'a0', Params.minarea, 'correctcellsize', false);
 end
 chiMapped = mapfromnal(Flow_Direction, Streams, chi);
 
 % Print space
 disp(' ');
 
-%% Export channel images
+%% Export channel images (during specified plot interval)
 
-% Print status
-disp('Exporting channel images...')
+% Execute at specified interval
+if contains(List{t}, Print_List) == 1
 
-% Export Longitudinal Profile
-fig = figure();
-hold on;
-plotdz(Streams, Z_smooth);
-grid();
-title(['Year = ' erase(List{t}, '.tif')]);
-exportgraphics(fig, [out_directory '\Images\Longitudinal_Profile.' char(Params.file_type)], 'Resolution', Params.file_dpi);
-close fig 1;
+    % Print status
+    disp('Exporting channel images...')
+    
+    % Export Longitudinal Profile
+    fig = figure();
+    hold on;
+    plotdz(Streams, Z_smooth);
+    grid();
+    title(['Year = ' erase(List{t}, '.tif')]);
+    exportgraphics(fig, [out_directory '\Images\Longitudinal_Profile.' char(Params.file_type)], 'Resolution', Params.file_dpi);
+    close fig 1;
+    
+    % Ksn_Map
+    cm_gray = colormap('gray');
+    close fig 1;
+    fig = figure();
+    hold on
+    imageschs(DEM, [], 'colormap', cm_gray(1:255,:), 'colorbar', false);
+    plotc(Streams, Ksn);
+    colorbar;
+    title(['Year = ' erase(List{t}, '.tif')]);
+    exportgraphics(fig, [out_directory '\Images\Ksn_Map.' char(Params.file_type)], 'Resolution', Params.file_dpi);
+    close fig 1;
+    
+    % Chi_Map
+    fig = figure();
+    hold on;
+    imageschs(DEM, [], 'colormap', cm_gray(1:255,:), 'colorbar', false);
+    plotc(Streams, chi, 'LineWidth', 3);
+    colormap(cm);
+    colorbar;
+    title(['Year = ' erase(List{t}, '.tif')]);
+    exportgraphics(fig, [out_directory '\Images\Chi_Map.' char(Params.file_type)], 'Resolution', Params.file_dpi);
+    close fig 1;
+    
+    % Ksn_Mapped
+    fig = figure(); 
+    hold on;
+    cm = flipud(ttscm('roma'));  % load roma color map and reverse it
+    imageschs(DEM, KsnMapped, 'colormap', 'jet', 'colorbar', true, 'colorbarylabel', 'Ksn');
+    plot(Divides_Lines, 'limit', [2000 inf], 'color', 'k');
+    title(['Year = ' erase(List{t}, '.tif')]);
+    exportgraphics(fig, [out_directory '\Images\Ksn_Mapped.' char(Params.file_type)], 'Resolution', Params.file_dpi);
+    close fig 1;
+    
+    % Chi_Mapped
+    fig = figure(); 
+    hold on;
+    imageschs(DEM, chiMapped, 'colormap', cm, 'colorbar', true);
+    plot(Divides_Lines, 'limit', [2000 inf], 'color', 'k');
+    title(['Year = ' erase(List{t}, '.tif')]);
+    exportgraphics(fig, [out_directory '\Images\Chi_Mapped.' char(Params.file_type)], 'Resolution', Params.file_dpi);
+    close fig 1;
+    
+    % Chi_Plot
+    if char(Params.calculate_theta) == true
+        cp = chiplot(Streams, Z_smooth, Drainage_Area, 'mn', theta_calc, 'color', 'k', 'plot', false);
+    else
+        cp = chiplot(Streams, Z_smooth, Drainage_Area, 'mn', Params.theta, 'color', 'k', 'plot', false);
+    end
+    close fig 1;
+    fig = figure();
+    hold on;
+    plot(cp.chi, cp.elev);
+    grid();
+    title(['Year = ' erase(List{t}, '.tif')]);
+    xlabel('\chi');
+    ylabel('Elevation (m)');
+    exportgraphics(fig, [out_directory '\Images\Chi_Plot.' char(Params.file_type)], 'Resolution', Params.file_dpi);
+    close fig 1
+    
+    % Print space
+    disp(' ');
 
-% Ksn_Map
-cm_gray = colormap('gray');
-close fig 1;
-fig = figure();
-hold on
-imageschs(DEM, [], 'colormap', cm_gray(1:255,:), 'colorbar', false);
-plotc(Streams, Ksn);
-colorbar;
-title(['Year = ' erase(List{t}, '.tif')]);
-exportgraphics(fig, [out_directory '\Images\Ksn_Map.' char(Params.file_type)], 'Resolution', Params.file_dpi);
-close fig 1;
-
-% Chi_Map
-cm = flipud(ttscm('roma'));  % load roma color map and reverse it
-fig = figure();
-hold on;
-imageschs(DEM, [], 'colormap', cm_gray(1:255,:), 'colorbar', false);
-plotc(Streams, chi, 'LineWidth', 3);
-colormap(cm);
-colorbar;
-title(['Year = ' erase(List{t}, '.tif')]);
-exportgraphics(fig, [out_directory '\Images\Chi_Map.' char(Params.file_type)], 'Resolution', Params.file_dpi);
-close fig 1;
-
-% Ksn_Mapped
-fig = figure(); 
-hold on;
-cm = flipud(ttscm('roma'));  % load roma color map and reverse it
-imageschs(DEM, KsnMapped, 'colormap', 'jet', 'colorbar', true, 'colorbarylabel', 'Ksn');
-plot(Divides_Lines, 'limit', [2000 inf], 'color', 'k');
-title(['Year = ' erase(List{t}, '.tif')]);
-exportgraphics(fig, [out_directory '\Images\Ksn_Mapped.' char(Params.file_type)], 'Resolution', Params.file_dpi);
-close fig 1;
-
-% Chi_Mapped
-fig = figure(); 
-hold on;
-imageschs(DEM, chiMapped, 'colormap', cm, 'colorbar', true);
-plot(Divides_Lines, 'limit', [2000 inf], 'color', 'k');
-title(['Year = ' erase(List{t}, '.tif')]);
-exportgraphics(fig, [out_directory '\Images\Chi_Mapped.' char(Params.file_type)], 'Resolution', Params.file_dpi);
-close fig 1;
-
-% Chi_Plot
-if char(Params.calculate_theta) == true
-    cp = chiplot(Streams, Z_smooth, Drainage_Area, 'mn', theta_calc, 'color', 'k', 'plot', false);
-else
-    cp = chiplot(Streams, Z_smooth, Drainage_Area, 'mn', Params.theta, 'color', 'k', 'plot', false);
 end
-close fig 1;
-fig = figure();
-hold on;
-plot(cp.chi, cp.elev);
-grid();
-title(['Year = ' erase(List{t}, '.tif')]);
-xlabel('\chi');
-ylabel('Elevation (m)');
-exportgraphics(fig, [out_directory '\Images\Chi_Plot.' char(Params.file_type)], 'Resolution', Params.file_dpi);
-close fig 1
 
-% Print space
-disp(' ');
+%% Export channel grids (during specified plot interval)
 
-%% Export channel grids
+% Execute at specified interval
+if contains(List{t}, Print_List) == 1
 
-% Print status
-disp('Exporting channel grids...')
+    % Print status
+    disp('Exporting channel grids...')
+    
+    % Export chi and ksn grids
+    GRIDobj2geotiff(KsnMapped, [out_directory '\Grids\Ksn_Mapped_Grid.tif']);
+    GRIDobj2geotiff(chiMapped, [out_directory '\Grids\Chi_Mapped_Grid.tif']);
+    
+    % Print space
+    disp(' ');
 
-% Export chi and ksn grids
-GRIDobj2geotiff(KsnMapped, [out_directory '\Grids\Ksn_Mapped_Grid.tif']);
-GRIDobj2geotiff(chiMapped, [out_directory '\Grids\Chi_Mapped_Grid.tif']);
-
-% Print space
-disp(' ');
+end
 
 %% Segment Picker (manual step for selecting channel heads)
 
 % Sc = SegmentPicker_CS(DEM_original, Flow_Direction, Drainage_Area, Streams, 1, 'direction', 'down', 'plot_style', 'keep', 'ref_concavity', Params.theta, 'method', 'new_picks');
 % PS = load('PickedSegments_1.mat');
 
-%% Load channel heads, outlets, and map coorespondance
+%% Find / update channel heads
 
 % Print status
-disp('Handle channel heads...')
+disp('Handling channel heads...')
 
 % During first iteration, find all channel heads within 1 km from eastern
 % boundary
@@ -443,10 +487,6 @@ elseif t > 1
     end
 
 end
-
-% Import model uplift rate
-u = readtable([model_directory '\Input\Spin_up.csv']);
-u = u.u;
 
 % Print space
 disp(' ');
@@ -526,7 +566,7 @@ for i = 1 : size(Heads, 1)
         % Comment line to match spacing of companion script
         % Comment line to match spacing of companion script
 
-        % If dz / dt is < 0, identify knickpoint    
+        % If dz / dt is < 0, identify knickpoint
         else
             q = 0;
         end
@@ -612,7 +652,7 @@ for i = 1 : size(Heads, 1)
     Yo(i, 1) = Y_sorted(j);
     chio(i, 1) = chiMapped.Z(IXgrid_sorted(j));
     IXo(i, 1) = IXgrid_sorted(j);
-    
+
 end
 
 % Track chi changes through time
@@ -643,7 +683,7 @@ plot(Streams, 'LineWidth', 1, 'Color', 'b');
 ax2 = axes;
 hold on;
 scatter(Xk, Yk, 50, chik, 'filled', 'MarkerEdgeColor', 'k');
-scatter(Xo, Yo, 25, chiMapped.Z(IXo), 'filled', "v", 'MarkerEdgeColor', 'k');
+scatter(Xo, Yo, 50, chio, 'filled', "v", 'MarkerEdgeColor', 'k');
 % Comment line to match spacing of companion script
 ax1.XTick = [];
 ax1.YTick = [];
@@ -678,7 +718,7 @@ plot(Streams, 'LineWidth', 1, 'Color', 'b');
 ax2 = axes;
 hold on;
 scatter(Xk, Yk, 50, chik, 'filled', 'MarkerEdgeColor', 'k');
-scatter(Xo, Yo, 25, chiMapped.Z(IXo), 'filled', "v", 'MarkerEdgeColor', 'k');
+scatter(Xo, Yo, 50, chio, 'filled', "v", 'MarkerEdgeColor', 'k');
 % Comment line to match spacing of companion script
 ax1.XTick = [];
 ax1.YTick = [];
@@ -704,18 +744,22 @@ title(ax1, ['Year = ' erase(List{t}, '.tif')]);
 exportgraphics(fig, [out_directory '\Images\ChiMapped_Knick_Chi_Map.' char(Params.file_type)], 'Resolution', Params.file_dpi);
 close fig 1
 
-% chi0_v_chik
+% chio_v_chik
 fig = figure();
 hold on;
+mx = round(max(chio));
+mn = round(min(chio));
+line = mn : mx;
 scatter(chio, chik, 50, Yk, 'filled', 'MarkerEdgeColor', 'k');
+plot(line, line, 'k--');
 colormap('plasma')
 cb = colorbar();
 ylabel(cb, 'Northing (m)');
 grid();
-xlabel('\chi at valley outlet');
+xlabel('\chi at junction');
 ylabel('Knickpoint \chi');
 title(['Year = ' erase(List{t}, '.tif')]);
-exportgraphics(fig, [out_directory '\Images\chi0_v_chik.' char(Params.file_type)], 'Resolution', Params.file_dpi);
+exportgraphics(fig, [out_directory '\Images\chio_v_chik.' char(Params.file_type)], 'Resolution', Params.file_dpi);
 close fig 1;
 
 % Comment line to match spacing of companion script
@@ -759,7 +803,7 @@ legend('Knickpoint (north)', 'Knickpoint (south)', 'location', 'northwest');
 exportgraphics(fig, [analysis_directory '\Output\Timeseries\chik_timeseries.' char(Params.file_type)], 'Resolution', Params.file_dpi);
 close fig 1;
 
-%dchik_dt_timeseries
+% dchik_dt_timeseries
 dchik_dt_N = List_nums * NaN;
 dchik_dt_S = List_nums * NaN;
 for i = 1 : size(CHIK, 2)
@@ -771,9 +815,8 @@ for i = 1 : size(CHIK, 2)
         dchik_dt_S(i) = (CHIK(end - 1, i) - CHIK(end - 1, i - 1)) / (List_nums(i) - List_nums(i - 1));
     end
 end
-inputs = readtable([model_directory '\Input\Spin_up.csv']);
-ksp_1 = inputs.ksp_1;
-ksp_2 = inputs.ksp_2;
+ksp_1 = spin_params.ksp_1;
+ksp_2 = spin_params.ksp_2;
 rate_1 = ksp_1 * (Params.minarea ^ Params.theta);
 rate_2 = ksp_2 * (Params.minarea ^ Params.theta);
 fig = figure();
@@ -819,13 +862,67 @@ csvwrite([analysis_directory '\Output\Timeseries\DISTANCE.csv'], DISTANCE);
 % Print space
 disp(' ');
 
-%% Videos
+%% Videos (images exported during plot interval)
 
 % Print status
 disp('Creating videos...')
 
 % Get list of images
-contents = dir([analysis_directory '\Output\' erase(List{t}, '.tif') '\Images']);
+contents = dir([analysis_directory '\Output\' erase(Print_List{1}, '.tif') '\Images']);
+names = {contents.name};
+im_List = names(3 : end);
+
+% Loop through videos
+for j = 1 : size(im_List, 2)
+
+    % Create images cells
+    images = cell(size(Print_List, 2), 1);
+
+    % Loop through images
+    for i = 1 : size(Print_List, 2)
+        
+        % Open image
+        images{i} = imread([analysis_directory '\Output\' erase(Print_List{i}, '.tif') '\Images\' im_List{j}]);
+
+        % Enforce image size
+        if i == 1
+            px_sz = size(images{1});
+            px_sz = px_sz(1, 1 : 2);
+        else
+            images{i} = imresize(images{i}, px_sz);
+        end
+
+    end
+    
+    % Initialize VideoWriter
+    writerObj = VideoWriter([analysis_directory '\Output\Videos\' erase(im_List{j}, ['.' char(Params.file_type)]) '.avi']);
+    writerObj.FrameRate = 1;
+    secsPerImage = ones(1, size(Print_List, 2));
+    open(writerObj);
+    
+    % Write frames
+    for u=1:length(images)
+        frame = im2frame(images{u});
+        for v=1:secsPerImage(u) 
+            writeVideo(writerObj, frame);
+        end
+    end
+    
+    % Close VideoWriter
+    close(writerObj);
+
+end
+
+% Print space
+disp(' ');
+
+%% Videos (images exported every timestep)
+
+% Print status
+disp('Creating more videos...')
+
+% Get list of images
+contents = dir([analysis_directory '\Output\' erase(List{1}, '.tif') '\Images']);
 names = {contents.name};
 im_List = names(3 : end);
 
@@ -840,7 +937,7 @@ for j = 1 : size(im_List, 2)
         
         % Open image
         images{i} = imread([analysis_directory '\Output\' erase(List{i}, '.tif') '\Images\' im_List{j}]);
-        
+
         % Enforce image size
         if i == 1
             px_sz = size(images{1});
