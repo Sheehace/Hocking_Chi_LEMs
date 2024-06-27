@@ -3,6 +3,7 @@ Inputs, driver scripts, and analyses used to create the landscape evolution mode
 
 Requirements:
 * [Landlab](https://landlab.github.io/#/)
+* [QGIS from Conda](https://plugins.qgis.org/planet/tag/conda/)
 * [Topotoolbox](https://topotoolbox.wordpress.com/)
 * [Topographic Analysis Toolkit](https://github.com/amforte/Topographic-Analysis-Kit)
 
